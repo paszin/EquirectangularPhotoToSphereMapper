@@ -69,45 +69,51 @@ class UVMapping:
 openscad_template = "color([{r}, {g}, {b}, 1]) " +\
                     "translate([{tx}, {ty}, {tz}])" +\
                     "rotate([{rx}, {ry}, {rz}])" +\
-                    "cylinder(r=radius, h=0.1);"
+                    "cylinder(r=radius, h={h});"
 #openscad_template = "color([{r}, {g}, {b}, 1]) translate([{tx}, {ty}, {tz}]) rotate([{rx}, {ry}, {rz}]) cube(radius, center=true);"
 
 
 r = 1
-rows = 6
-columns = 2 * rows ## because of 2*pi
-resolution = math.pi/rows #math.pi/72
+rows = 80
+vertical_resolution = math.pi/rows #math.pi/72
 
+dot_radius = vertical_resolution/2
 
 ## which rows to create
-i_start = 175
-i_end = 185
+#i_start = 175
+#i_end = 185
 
 image =Image.open("sofia.JPG") 
 
 out = ""
-out += "$fn=12;\nradius={radius};\n".format(radius=resolution/2)
-for i, phi in enumerate(floatRange(0, math.pi, resolution)):
+out += "$fn=12;\nradius={radius};\n".format(radius=dot_radius)
+for i, phi in enumerate(floatRange(0, math.pi, vertical_resolution)):
     #if not i_start <= i < i_end:
     #    continue
+    z = math.cos(phi)
+    ##calculate number of dots in row
+    x_tmp = math.sin(0) * math.sin(phi)
+    y_tmp = math.cos(0) * math.sin(phi)
+    r_row = vlen([x_tmp, y_tmp, 0])
+    u_row = 2*math.pi*r_row
+    dots_count = max(u_row/(2*dot_radius), 1)
     ##map to row in image
     crop = image.crop((0, i*image.size[1]/(rows+1), image.size[0], (i+1)*image.size[1]/(rows+1)))
-    crop = crop.resize((columns, 1))
-    for j, theta in enumerate(floatRange(0, 2*math.pi, math.pi/4)):
+    crop = crop.resize((int(round(dots_count)), 1))
+    for j, theta in enumerate(floatRange(0, 2*math.pi, 2*math.pi/dots_count)):
         x = math.sin(theta) * math.sin(phi)
         y = math.cos(theta) * math.sin(phi)
-        z = math.cos(phi)
+        
         ## rotation
         rx = 0
         ry = rad2degree(phi)
-        rz = 90-rad2degree(theta)
+        rz = 90 - rad2degree(theta)
         ## color
-        #r = phi/math.pi
-        #g = theta/(2*math.pi)
-        #b = 0.5
-        #r, g, b = mapping.getUVMapping2(x, y, z)
-        r, g, b = map(lambda x: x/255.0, crop.getpixel((min(j, columns-1), 0)))
-        out += openscad_template.format(tx=x, ty=y, tz=z, rx=rx, ry=ry, rz=rz, r=r, g=g, b=b)
+        #r, g, b = phi/math.pi, theta/(2*math.pi), 0.5
+        r, g, b = map(lambda x: x/255.0, crop.getpixel((min(j, dots_count-1), 0)))
+        grey = 0.216*r+0.7152*g+0.0722*b
+        grey= (1-grey)*0.2 ##white=0, black=0.2
+        out += openscad_template.format(tx=x, ty=y, tz=z, rx=rx, ry=ry, rz=rz, r=r, g=g, b=b, h=grey)
         out += '\n'
 
 with open("test.scad", 'w') as f:
