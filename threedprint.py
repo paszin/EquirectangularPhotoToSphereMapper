@@ -20,6 +20,9 @@ def angle(vec1, vec2):
     '''in degrees'''
     return math.acos(scalar(vec1, vec2)/(vlen(vec1)*vlen(vec2)))*360/(2*math.pi)
 
+def rad2degree(a):
+    return a*360/(math.pi*2)
+
 def floatRange(start, stop, step):
     l = []
     while start < stop:
@@ -63,34 +66,41 @@ class UVMapping:
 
 ##r**2 - x**2 - y**2 = z**2
 
-openscad_template = "color([{r}, {g}, {b}, 1]) translate([{tx}, {ty}, {tz}]) rotate([{rx}, {ry}, {rz}]) sphere(r=radius);"
+openscad_template = "color([{r}, {g}, {b}, 1]) " +\
+                    "translate([{tx}, {ty}, {tz}])" +\
+                    "rotate([{rx}, {ry}, {rz}])" +\
+                    "cylinder(r=radius, h=0.1);"
 #openscad_template = "color([{r}, {g}, {b}, 1]) translate([{tx}, {ty}, {tz}]) rotate([{rx}, {ry}, {rz}]) cube(radius, center=true);"
 
 
 r = 1
-rows = 86
+rows = 6
 columns = 2 * rows ## because of 2*pi
 resolution = math.pi/rows #math.pi/72
 
 
-mapping = UVMapping()
+## which rows to create
+i_start = 175
+i_end = 185
 
 image =Image.open("sofia.JPG") 
 
 out = ""
 out += "$fn=12;\nradius={radius};\n".format(radius=resolution/2)
 for i, phi in enumerate(floatRange(0, math.pi, resolution)):
+    #if not i_start <= i < i_end:
+    #    continue
     ##map to row in image
     crop = image.crop((0, i*image.size[1]/(rows+1), image.size[0], (i+1)*image.size[1]/(rows+1)))
     crop = crop.resize((columns, 1))
-    for j, theta in enumerate(floatRange(0, 2*math.pi, resolution)):
+    for j, theta in enumerate(floatRange(0, 2*math.pi, math.pi/4)):
         x = math.sin(theta) * math.sin(phi)
         y = math.cos(theta) * math.sin(phi)
         z = math.cos(phi)
-        ## rotation (not working)
-        rx = 90-angle([1, 0, 0], normalize([x, y, z]))
-        ry = 90-angle([0, 1, 0], normalize([x, y, z]))
-        rz = 90-angle([0, 0, 1], normalize([x, y, z]))
+        ## rotation
+        rx = 0
+        ry = rad2degree(phi)
+        rz = 90-rad2degree(theta)
         ## color
         #r = phi/math.pi
         #g = theta/(2*math.pi)
