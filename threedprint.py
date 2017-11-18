@@ -1,6 +1,10 @@
 # -*- coding: utf-8 -*-
 ## this code is made for python2
 import math
+import time
+import random
+import os
+import thread
 import numpy
 from stl import mesh
 from PIL import Image
@@ -31,38 +35,7 @@ def floatRange(start, stop, step):
     return l
 
 
-class UVMapping:
 
-    def __init__(self):
-        self.image = Image.open("sofia.JPG")
-        self.image = Image.open("chess.png").convert('RGB')
-        #self.image = Image.new(
-        
-    def getUVMapping(self, x, y, z):
-        x, y, z = normalize([x, y, z])
-        u = math.atan2(x, z) / 2*math.pi + 0.5
-        v = y * 0.5 + 0.5
-        u *= self.image.size[0]
-        v *= self.image.size[1]
-        u = min(int(round(u)), self.image.size[1]-1)
-        u = max(u, 0)
-        v = min(int(round(v)), self.image.size[0]-1)
-        v = max(v, 0)
-        r, g, b = self.image.getpixel((v, u))
-        return 1.0*r/255, 1.0*g/255, 1.0*b/255
-
-    def getUVMapping2(self, x, y, z):
-        u = x/vlen([x, y, z])
-        v = y/vlen([x, y, z])
-        u *= self.image.size[0]
-        v *= self.image.size[1]
-        u = min(int(round(u)), self.image.size[1]-1)
-        u = max(u, 0)
-        v = min(int(round(v)), self.image.size[0]-1)
-        v = max(v, 0)
-        r, g, b = self.image.getpixel((v, u))
-        return 1.0*r/255, 1.0*g/255, 1.0*b/255
-    
 
 ##r**2 - x**2 - y**2 = z**2
 
@@ -73,74 +46,123 @@ openscad_template = "color([{r}, {g}, {b}, 1]) " +\
 #openscad_template = "color([{r}, {g}, {b}, 1]) translate([{tx}, {ty}, {tz}]) rotate([{rx}, {ry}, {rz}]) cube(radius, center=true);"
 
 
-r = 1
-rows = 80
-vertical_resolution = math.pi/rows #math.pi/72
 
-dot_radius = vertical_resolution/2
+class LithoSphere:
 
-## which rows to create
-#i_start = 175
-#i_end = 185
-
-image =Image.open("sofia.JPG") 
-
-out = ""
-out += "$fn=12;\nradius={radius};\n".format(radius=dot_radius)
-for i, phi in enumerate(floatRange(0, math.pi, vertical_resolution)):
-    #if not i_start <= i < i_end:
-    #    continue
-    z = math.cos(phi)
-    ##calculate number of dots in row
-    x_tmp = math.sin(0) * math.sin(phi)
-    y_tmp = math.cos(0) * math.sin(phi)
-    r_row = vlen([x_tmp, y_tmp, 0])
-    u_row = 2*math.pi*r_row
-    dots_count = max(u_row/(2*dot_radius), 1)
-    ##map to row in image
-    crop = image.crop((0, i*image.size[1]/(rows+1), image.size[0], (i+1)*image.size[1]/(rows+1)))
-    crop = crop.resize((int(round(dots_count)), 1))
-    for j, theta in enumerate(floatRange(0, 2*math.pi, 2*math.pi/dots_count)):
-        x = math.sin(theta) * math.sin(phi)
-        y = math.cos(theta) * math.sin(phi)
+    def __init__(self, filename):
+        self.image =Image.open(filename)
+        self.name = filename.split('.')[0]
+        self.row_count = 40
+        self.vertical_resolution = math.pi/self.row_count
+        self.dot_radius = self.vertical_resolution/2
+        self.folder = filename.split('.')[0] + str(random.randint(1, 1000))
+        os.mkdir(self.folder)
+        self.scad_folder = self.folder + '//' + 'scad'
+        os.mkdir(self.scad_folder)
+        self.stl_folder = self.folder + '//' + 'stl'
+        os.mkdir(self.stl_folder)
         
-        ## rotation
-        rx = 0
-        ry = rad2degree(phi)
-        rz = 90 - rad2degree(theta)
-        ## color
-        #r, g, b = phi/math.pi, theta/(2*math.pi), 0.5
-        r, g, b = map(lambda x: x/255.0, crop.getpixel((min(j, dots_count-1), 0)))
-        grey = 0.216*r+0.7152*g+0.0722*b
-        grey= (1-grey)*0.2 ##white=0, black=0.2
-        out += openscad_template.format(tx=x, ty=y, tz=z, rx=rx, ry=ry, rz=rz, r=r, g=g, b=b, h=grey)
-        out += '\n'
 
-with open("test.scad", 'w') as f:
-    f.write(out)
+    def calculate(self):
+        for i in range(0, self.row_count, 5):
+            self.calculatePart((i, i+5), self.name+str(i))
+    
+    def calculatePart(self, rows, name):
+        code = self.getOpenScadCode(rows)
+        self.saveScadFile(code, self.scad_folder+'//ls_' + name)
 
-print "done"
+    def renderStart(self):
+        for f in os.listdir(self.scad_folder):
+            command = "openscad " + self.scad_folder + "//" + f + \
+                                " -o " + self.stl_folder +"//" + f.split('.')[0] + '.stl'
+            thread.start_new_thread( os.system, (command, ) )
 
-
-#for u in range(height):
- #   for v in range(width):
-        ## normalisieren
-        ##formeln von oben anwenden
-        ##punkt auf der sphere finden vom stl import
-        ##(distance punkt, fläche)
-        ##verschiebe vertices entlang der normalen
-        ##  um den grayscale wert
-        ## --> es entstehen luecken, aber man sollte ein bild erkennen koennen
-
-
-## alternative:
-        ## berechnung wie oben
-        ## neuen vertex erstellen
-        ##verbinden mit vertex davor
-
-##alternative
-        ## openscad code erzeugen, rotate & translate cylinder
+    def waitForRendering(self, interval=60, singleRun=False, log=False):
+        while True:
+            if len(os.listdir(self.scad_folder)) == len(os.listdir(self.stl_folder)):
+                break
+            if singleRun or log:
+                print str(len(os.listdir(self.stl_folder))) + " of " + str(len(os.listdir(self.scad_folder)))
+            if singleRun:
+                break
+            time.sleep(interval)
         
-## alternative:
-        ## openscad
-        ##polyhedron( points = [ [X0, Y0, Z0], [X1, Y1, Z1], ... ], faces = [ [P0, P1, P2, P3, ...], ... ], convexity = N);
+    
+            
+
+    def mergeStls(self):
+        name = "lithosphere_" + self.name + ".stl"
+        with open(self.folder + '//' + name, "w") as fo:
+            fo.write("solid Lithosphere\n")
+            for fin in os.listdir(self.stl_folder):
+                with open(self.stl_folder+'//' + fin) as fi:
+                    content = fi.read()
+                    content.replace("endsolid OpenSCAD_Model\n", "")
+                    content.replace("solid OpenSCAD_Model\n", "")
+                    fo.write(content)
+            fo.write("endsolid Lithosphere\n")
+        return name
+
+        
+        
+
+    def getOpenScadCode(self, rows):
+
+        rc = self.row_count ## refactor
+        out = ""
+        out += "$fn=12;\nradius={radius};\n".format(radius=self.dot_radius)
+        for i, phi in enumerate(floatRange(0, math.pi, self.vertical_resolution)):
+            if not rows[0] <= i < rows[1]:
+                continue
+            z = math.cos(phi)
+            ##calculate number of dots in row
+            x_tmp = math.sin(0) * math.sin(phi)
+            y_tmp = math.cos(0) * math.sin(phi)
+            r_row = vlen([x_tmp, y_tmp, 0])
+            u_row = 2*math.pi*r_row
+            dots_count = max(u_row/(2*self.dot_radius), 1)
+            ##map to row in image
+            crop = self.image.crop((0, i*self.image.size[1]/(rc+1), self.image.size[0], (i+1)*self.image.size[1]/(rc+1)))
+            crop = crop.resize((int(round(dots_count)), 1))
+            for j, theta in enumerate(floatRange(0, 2*math.pi, 2*math.pi/dots_count)):
+                x = math.sin(theta) * math.sin(phi)
+                y = math.cos(theta) * math.sin(phi)
+                
+                ## rotation
+                rx = 0
+                ry = rad2degree(phi)
+                rz = 90 - rad2degree(theta)
+                ## color
+                #r, g, b = phi/math.pi, theta/(2*math.pi), 0.5
+                r, g, b = map(lambda x: x/255.0, crop.getpixel((min(j, dots_count-1), 0)))
+                grey = 0.216*r+0.7152*g+0.0722*b
+                grey= (1-grey)*0.1+0.01 ##white=0.01, black=0.101
+                out += openscad_template.format(tx=x, ty=y, tz=z, rx=rx, ry=ry, rz=rz, r=r, g=g, b=b, h=grey)
+                out += '\n'
+        return out
+
+    def saveScadFile(self, code, name):
+        with open(name + ".scad", 'w') as f:
+            f.write(code)
+
+
+
+
+if __name__ == "__main__":
+    ls = LithoSphere("sofia.JPG")
+    print "Working Directory: ", ls.folder
+    print "Calculation start"
+    ls.calculate()
+    print "Calculation done"
+    ls.renderStart()
+    print "Rendering in process"
+    ls.waitForRendering(log=True, interval=15)
+    print "Rendering done"
+    print "Merge Stls start"
+    outname = ls.mergeStls()
+    print "Merge Stls done"
+    print "\nALL DONE"
+    print "File: ", outname
+    
+    
+    
