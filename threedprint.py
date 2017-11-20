@@ -41,9 +41,10 @@ def floatRange(start, stop, step):
 
 openscad_template = "color([{r}, {g}, {b}, 1]) " +\
                     "translate([{tx}, {ty}, {tz}])" +\
-                    "rotate([{rx}, {ry}, {rz}])" +\
-                    "cylinder(r=radius, h={h});"
-#openscad_template = "color([{r}, {g}, {b}, 1]) translate([{tx}, {ty}, {tz}]) rotate([{rx}, {ry}, {rz}]) cube(radius, center=true);"
+                    "rotate([{rx}, {ry}, {rz}]) scale([1.05,1.05,1.05])"
+
+#openscad_template += "cylinder(r=radius, h={h});"
+openscad_template += " cube([radius*2, radius*2, {h}]);\n"
 
 
 
@@ -52,7 +53,7 @@ class LithoSphere:
     def __init__(self, filename):
         self.image =Image.open(filename)
         self.name = filename.split('.')[0]
-        self.row_count = 40
+        self.row_count = 440
         self.vertical_resolution = math.pi/self.row_count
         self.dot_radius = self.vertical_resolution/2
         self.folder = filename.split('.')[0] + str(random.randint(1, 1000))
@@ -64,8 +65,9 @@ class LithoSphere:
         
 
     def calculate(self):
-        for i in range(0, self.row_count, 5):
-            self.calculatePart((i, i+5), self.name+str(i))
+        size = 4
+        for i in range(0, self.row_count, size):
+            self.calculatePart((i, i+size), self.name+str(i))
     
     def calculatePart(self, rows, name):
         code = self.getOpenScadCode(rows)
@@ -76,6 +78,15 @@ class LithoSphere:
             command = "openscad " + self.scad_folder + "//" + f + \
                                 " -o " + self.stl_folder +"//" + f.split('.')[0] + '.stl'
             thread.start_new_thread( os.system, (command, ) )
+
+    def renderStartSingle(self, filename):
+        command = "openscad " + self.scad_folder + "//" + filename + \
+                                " -o " + self.stl_folder +"//" + filename.split('.')[0] + '.stl'
+        thread.start_new_thread( os.system, (command, ) )
+        
+
+    def getRenderStatus(self):
+        return len(os.listdir(self.stl_folder)), len(os.listdir(self.scad_folder))
 
     def waitForRendering(self, interval=60, singleRun=False, log=False):
         while True:
@@ -110,7 +121,7 @@ class LithoSphere:
 
         rc = self.row_count ## refactor
         out = ""
-        out += "$fn=12;\nradius={radius};\n".format(radius=self.dot_radius)
+        out += "$fn=6;\nradius={radius};\n".format(radius=self.dot_radius)
         for i, phi in enumerate(floatRange(0, math.pi, self.vertical_resolution)):
             if not rows[0] <= i < rows[1]:
                 continue
@@ -136,7 +147,7 @@ class LithoSphere:
                 #r, g, b = phi/math.pi, theta/(2*math.pi), 0.5
                 r, g, b = map(lambda x: x/255.0, crop.getpixel((min(j, dots_count-1), 0)))
                 grey = 0.216*r+0.7152*g+0.0722*b
-                grey= (1-grey)*0.1+0.01 ##white=0.01, black=0.101
+                grey= (1-grey)*0.6+0.01 ##white=0.01, black=0.101
                 out += openscad_template.format(tx=x, ty=y, tz=z, rx=rx, ry=ry, rz=rz, r=r, g=g, b=b, h=grey)
                 out += '\n'
         return out
@@ -149,18 +160,29 @@ class LithoSphere:
 
 
 if __name__ == "__main__":
+    print "[" + time.strftime("%H:%M:%S") + "]"
     ls = LithoSphere("sofia.JPG")
     print "Working Directory: ", ls.folder
     print "Calculation start"
     ls.calculate()
     print "Calculation done"
-    ls.renderStart()
+    print "[" + time.strftime("%H:%M:%S") + "]"
+    #ls.renderStart()
     print "Rendering in process"
-    ls.waitForRendering(log=True, interval=15)
+    files = sorted(os.listdir(ls.scad_folder), cmp=lambda x, y : cmp(int(x.replace('ls_'+ls.name, '').replace('.scad', '')), int(y.replace('ls_' + ls.name, '').replace('.scad', ''))))
+    for i, f in enumerate(files):
+        ## wait...
+        while ls.getRenderStatus()[0] + 3 < i:
+            time.sleep(10)
+        print "start rendering ", f
+        ls.renderStartSingle(f)
+    ls.waitForRendering(log=True, interval=120)
     print "Rendering done"
+    print "[" + time.strftime("%H:%M:%S") + "]"
     print "Merge Stls start"
     outname = ls.mergeStls()
     print "Merge Stls done"
+    print "[" + time.strftime("%H:%M:%S") + "]"
     print "\nALL DONE"
     print "File: ", outname
     
