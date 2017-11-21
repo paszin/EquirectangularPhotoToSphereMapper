@@ -9,6 +9,7 @@ import numpy
 from stl import mesh
 from PIL import Image
 
+from stlwriter import STLWriter
 
 def normalize(vec):
     abs_vec = math.sqrt(sum(map(lambda x: pow(x, 2), vec)))
@@ -50,18 +51,25 @@ openscad_template += " cube([radius*2, radius*2, {h}]);\n"
 
 class LithoSphere:
 
-    def __init__(self, filename):
-        self.image =Image.open(filename)
-        self.name = filename.split('.')[0]
-        self.row_count = 440
-        self.vertical_resolution = math.pi/self.row_count
+    def __init__(self, filename, name=None):
+        self.row_count = 10
+        self.vertical_resolution = math.pi/self.row_count/2
         self.dot_radius = self.vertical_resolution/2
-        self.folder = filename.split('.')[0] + str(random.randint(1, 1000))
-        os.mkdir(self.folder)
-        self.scad_folder = self.folder + '//' + 'scad'
-        os.mkdir(self.scad_folder)
-        self.stl_folder = self.folder + '//' + 'stl'
-        os.mkdir(self.stl_folder)
+        self.image =Image.open(filename)
+        if not name:
+            self.image =Image.open(filename)
+            self.name = filename.split('.')[0]
+            self.folder = filename.split('.')[0] + str(random.randint(1, 1000))
+            os.mkdir(self.folder)
+            self.scad_folder = self.folder + '//' + 'scad'
+            os.mkdir(self.scad_folder)
+            self.stl_folder = self.folder + '//' + 'stl'
+            os.mkdir(self.stl_folder)
+        else:
+            self.folder = name
+            self.scad_folder = self.folder + '//' + 'scad'
+            self.stl_folder = self.folder + '//' + 'stl'
+            
         
 
     def calculate(self):
@@ -98,8 +106,6 @@ class LithoSphere:
                 break
             time.sleep(interval)
         
-    
-            
 
     def mergeStls(self):
         name = "lithosphere_" + self.name + ".stl"
@@ -152,14 +158,46 @@ class LithoSphere:
                 out += '\n'
         return out
 
+    def calculateStlCode(self):
+        rc = self.row_count ## refactor
+        stl = STLWriter()
+        stl.start()
+        for i, phi in enumerate(floatRange(0, math.pi, self.vertical_resolution)):
+            z = math.cos(phi)
+            ##calculate number of dots in row
+            x_tmp = math.sin(0) * math.sin(phi)
+            y_tmp = math.cos(0) * math.sin(phi)
+            r_row = vlen([x_tmp, y_tmp, 0])
+            u_row = 2*math.pi*r_row
+            dots_count = max(u_row/(2*self.dot_radius), 1)
+            ##map to row in image
+            crop = self.image.crop((0, i*self.image.size[1]/(rc+1), self.image.size[0], (i+1)*self.image.size[1]/(rc+1)))
+            crop = crop.resize((int(round(dots_count)), 1))
+            for j, theta in enumerate(floatRange(0, 2*math.pi, 2*math.pi/dots_count)):
+                x = math.sin(theta) * math.sin(phi)
+                y = math.cos(theta) * math.sin(phi)
+                
+                ## rotation
+                rx = 0
+                ry = phi
+                rz = math.pi/4 - theta
+                ## color
+                #r, g, b = phi/math.pi, theta/(2*math.pi), 0.5
+                r, g, b = map(lambda x: x/255.0, crop.getpixel((min(j, dots_count-1), 0)))
+                grey = 0.216*r+0.7152*g+0.0722*b
+                grey= (1-grey)*0.6+0.01 ##white=0.01, black=0.101
+                stl.addCube(x=2*self.dot_radius, y=2*self.dot_radius, z=2*self.dot_radius, center=[x, y, z], rotX=rx, rotY=ry, rotZ=rz)
+        stl.finish()
+        return stl.stl
+        
+
     def saveScadFile(self, code, name):
         with open(name + ".scad", 'w') as f:
             f.write(code)
 
 
 
-
-if __name__ == "__main__":
+def process1():
     print "[" + time.strftime("%H:%M:%S") + "]"
     ls = LithoSphere("sofia.JPG")
     print "Working Directory: ", ls.folder
@@ -185,6 +223,21 @@ if __name__ == "__main__":
     print "[" + time.strftime("%H:%M:%S") + "]"
     print "\nALL DONE"
     print "File: ", outname
+
+def process2():
+    print "[" + time.strftime("%H:%M:%S") + "]"
+    ls = LithoSphere("sofia.JPG", name="x")
+    code = ls.calculateStlCode()
+    with open("sofia_new_stl.stl", "w") as f:
+        f.write(code)
+    print 'done'
+    print "[" + time.strftime("%H:%M:%S") + "]"
+    
+
+if __name__ == "__main__":
+    process2()
+
+
     
     
     
