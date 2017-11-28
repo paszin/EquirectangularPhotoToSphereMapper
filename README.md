@@ -8,8 +8,15 @@ Usually 360° photos are made to be viewed on a mobile device. What what if you 
 
 # Print on paper
 
+Usage: 
+  `python globeprint.py filename segments`
+  
+![example](https://github.com/paszin/EquirectangularPhotoToSphereMapper/raw/master/gibraltar_s12.jpg "Example")
+
+Example:
 `python globeprint.py sofia.JPG 4`
 
+![example](https://github.com/paszin/EquirectangularPhotoToSphereMapper/raw/master/sofia_s4.jpg "Example")
 
 
 
@@ -17,3 +24,12 @@ Usually 360° photos are made to be viewed on a mobile device. What what if you 
 
 # 3D-print as a sphere
 
+Take the idea of lithografy
+
+Example:
+https://formlabs.com/media/upload/_thumbs/Mona-Lisa-100-Finished_1_Y67wU58.jpg.1354x0_q80_crop-smart.jpg
+![litho](https://formlabs.com/media/upload/_thumbs/Mona-Lisa-100-Finished_1_Y67wU58.jpg.1354x0_q80_crop-smart.jpg)
+
+for a sphere
+
+![litho](https://github.com/paszin/EquirectangularPhotoToSphereMapper/raw/master/gibraltar_sphere.jpg "Example")
