@@ -8,9 +8,15 @@ Usually 360° photos are made to be viewed on a mobile device. What what if you 
 
 # Print on paper
 
+Usage: 
+  `python globeprint.py filename segments`
+  
+![example](https://github.com/paszin/EquirectangularPhotoToSphereMapper/raw/master/gibraltar_s12.jpg "Example")
+
+Example:
 `python globeprint.py sofia.JPG 4`
 
-![example](https://github.com/paszin/EquirectangularPhotoToSphereMapper/raw/master/gibraltar_s12.jpg "Example")
+![example](https://github.com/paszin/EquirectangularPhotoToSphereMapper/raw/master/sofia_s4.jpg "Example")
 
 
 
