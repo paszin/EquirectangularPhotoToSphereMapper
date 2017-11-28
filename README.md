@@ -28,8 +28,8 @@ Take the idea of lithografy
 
 Example:
 https://formlabs.com/media/upload/_thumbs/Mona-Lisa-100-Finished_1_Y67wU58.jpg.1354x0_q80_crop-smart.jpg
-(litho)(https://formlabs.com/media/upload/_thumbs/Mona-Lisa-100-Finished_1_Y67wU58.jpg.1354x0_q80_crop-smart.jpg)
+![litho](https://formlabs.com/media/upload/_thumbs/Mona-Lisa-100-Finished_1_Y67wU58.jpg.1354x0_q80_crop-smart.jpg)
 
 for a sphere
 
-(litho)(https://github.com/paszin/EquirectangularPhotoToSphereMapper/raw/master/gibraltar_sphere.jpg "Example")
+![litho](https://github.com/paszin/EquirectangularPhotoToSphereMapper/raw/master/gibraltar_sphere.jpg "Example")
