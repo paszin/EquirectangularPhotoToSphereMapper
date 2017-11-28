@@ -10,6 +10,7 @@ Usually 360° photos are made to be viewed on a mobile device. What what if you 
 
 `python globeprint.py sofia.JPG 4`
 
+![example](https://github.com/paszin/EquirectangularPhotoToSphereMapper/raw/master/gibraltar_s12.jpg "Example")
 
 
 
