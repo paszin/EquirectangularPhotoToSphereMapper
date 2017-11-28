@@ -28,7 +28,7 @@ Take the idea of lithografy
 
 Example:
 https://formlabs.com/media/upload/_thumbs/Mona-Lisa-100-Finished_1_Y67wU58.jpg.1354x0_q80_crop-smart.jpg
-![litho](https://formlabs.com/media/upload/_thumbs/Mona-Lisa-100-Finished_1_Y67wU58.jpg.1354x0_q80_crop-smart.jpg)
+![litho](https://formlabs.com/media/upload/_thumbs/Mona-Lisa-100-Finished_1_Y67wU58.jpg.1354x0_q80_crop-smart.jpg =250x)
 
 for a sphere
 
